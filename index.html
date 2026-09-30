@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Resume Analyzer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+
+    <div class="container" id="auth-section">
+        <h2>AI Resume Analyzer</h2>
+
+
+        <div id="login-box">
+            <h3>Login</h3>
+            <input type="email" id="login-email" placeholder="Email Address" required>
+            <input type="password" id="login-password" placeholder="Password" required>
+            <button onclick="login()">Login</button>
+            <p>Don't have an account? <a href="#" onclick="toggleAuth()">Register Now</a></p>
+        </div>
+
+
+        <div id="register-box" style="display: none;">
+            <h3>Create New Account</h3>
+            <input type="text" id="reg-name" placeholder="Full Name" required>
+            <input type="email" id="reg-email" placeholder="Email Address" required>
+            <input type="password" id="reg-password" placeholder="Password" required>
+            <button onclick="register()">Register</button>
+            <p>Already have an account? <a href="#" onclick="toggleAuth()">Login Here</a></p>
+        </div>
+
+        <p id="auth-message" class="message"></p>
+    </div>
+
+
+    <div class="container dashboard-container" id="dashboard-section" style="display: none;">
+        <div class="header">
+            <h2>Candidate Dashboard</h2>
+            <button onclick="logout()" class="logout-btn">Logout</button>
+        </div>
+
+        <div class="upload-area">
+            <h3>Upload Your Resume</h3>
+            <p>Supported formats: PDF, DOCX</p>
+            <input type="file" id="resume-file" accept=".pdf, .docx" required>
+            <button onclick="uploadAndAnalyze()" id="upload-btn">Upload & Analyze</button>
+            <p id="dashboard-message" class="message"></p>
+        </div>
+
+
+        <div id="results-area" style="display: none;">
+            <h3>AI Analysis Results</h3>
+
+            <div class="result-card">
+                <h4>Professional Summary</h4>
+                <p id="res-summary"></p>
+            </div>
+
+            <div class="result-card">
+                <h4>Technical Skills</h4>
+                <p id="res-tech"></p>
+            </div>
+
+            <div class="result-card">
+                <h4>Soft Skills</h4>
+                <p id="res-soft"></p>
+            </div>
+
+            <div class="result-card">
+                <h4>Education</h4>
+                <p id="res-edu"></p>
+            </div>
+
+            <div class="result-card">
+                <h4>Experience</h4>
+                <p id="res-exp"></p>
+            </div>
+        </div>
+
+
+        <div id="action-buttons" style="display: none; margin-top: 20px; gap: 10px; justify-content: center;">
+            <button onclick="getCareerAdvice()" style="background-color: #17a2b8; width: auto; padding: 10px 20px;">Get
+                Career Advice</button>
+            <button onclick="matchJobs()" style="background-color: #28a745; width: auto; padding: 10px 20px;">Match
+                Jobs</button>
+        </div>
+
+
+        <div id="extra-results-area" style="margin-top: 20px;"></div>
+
+        <hr style="margin: 30px 0; border: 1px solid #ccc;">
+
+
+        <div class="admin-area" style="background-color: #e9ecef; padding: 20px; border-radius: 8px; text-align: left;">
+            <h3>Admin: Add New Job</h3>
+            <input type="text" id="job-title" placeholder="Job Title (e.g., AI Engineer)" required>
+            <textarea id="job-desc" placeholder="Job Description" rows="3"
+                style="width: 90%; padding: 10px; margin: 10px 0; border-radius: 5px; border: 1px solid #ccc;"></textarea>
+            <input type="text" id="job-skills" placeholder="Required Skills (e.g., Python, ML, FastAPI)" required>
+            <input type="text" id="job-level" placeholder="Experience Level (e.g., Junior, Mid, Senior)" required>
+            <button onclick="addJob()" style="background-color: #343a40; margin-top: 10px;">Add Job to System</button>
+            <p id="job-msg" class="message"></p>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>
