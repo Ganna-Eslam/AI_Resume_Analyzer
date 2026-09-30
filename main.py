@@ -16,10 +16,10 @@ from groq import Groq
 import faiss
 from sentence_transformers import SentenceTransformer
 import numpy as np
-# ================= 1. إعدادات السيرفر والحماية =================
+
+
 app = FastAPI(title="AI Resume Analyzer API")
 
-# إعداد الـ CORS للسماح لأي واجهة بالاتصال بالسيرفر
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
@@ -28,18 +28,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# إعداد التشفير بـ Bcrypt
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# إعدادات الـ JWT Token
-SECRET_KEY = "your_super_secret_key_here" # في المشاريع الحقيقية بنحطها في ملف .env
+
+SECRET_KEY = "your_super_secret_key_here" 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 # التوكن هينتهي بعد ساعة
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 
 
 
-# إعداد موديل تحويل النصوص لـ Vectors
+
 embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-# ================= 2. نماذج البيانات (Pydantic Models) =================
+
+
+
 class UserRegister(BaseModel):
     full_name: str
     email: EmailStr
@@ -62,10 +64,11 @@ class JobUpdate(BaseModel):
     required_skills: Optional[str] = None
     experience_level: Optional[str] = None
 
-# ================= 3. دوال مساعدة (Helper Functions) =================
+
+
 def get_db_connection():
     conn = sqlite3.connect('resume_analyzer.db')
-    conn.row_factory = sqlite3.Row # عشان نرجع البيانات كـ Dictionary بدل Tuples
+    conn.row_factory = sqlite3.Row 
     return conn
 
 def hash_password(password: str):
@@ -92,7 +95,7 @@ def extract_text_from_docx(file_bytes):
     text = "\n".join([para.text for para in doc.paragraphs])
     return text
 
-# إعداد الـ Groq Client (استبدلي YOUR_GROQ_API_KEY بالمفتاح بتاعك من console.groq.com)
+
 GROQ_API_KEY = "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"
 groq_client = Groq(api_key=GROQ_API_KEY)
 
@@ -118,20 +121,21 @@ def analyze_resume_with_llama(text: str):
     )
     
     return json.loads(response.choices[0].message.content)
-# ================= 4. نقاط الاتصال (API Endpoints) =================
+
+
 
 @app.post("/register", status_code=status.HTTP_201_CREATED)
 def register_user(user: UserRegister):
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # التأكد إن الإيميل مش متسجل قبل كده
+
     cursor.execute("SELECT * FROM users WHERE email = ?", (user.email,))
     if cursor.fetchone():
         conn.close()
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    # تشفير كلمة المرور وحفظ المستخدم في قاعدة البيانات
+   
     hashed_pwd = hash_password(user.password)
     cursor.execute(
         "INSERT INTO users (full_name, email, hashed_password) VALUES (?, ?, ?)",
@@ -147,16 +151,16 @@ def login_user(user: UserLogin):
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # البحث عن المستخدم بالإيميل
+  
     cursor.execute("SELECT * FROM users WHERE email = ?", (user.email,))
     db_user = cursor.fetchone()
     conn.close()
     
-    # التأكد من وجود المستخدم وصحة كلمة المرور
+    
     if not db_user or not verify_password(user.password, db_user["hashed_password"]):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
-    # إنشاء الـ JWT Token
+  
     access_token = create_access_token(data={"sub": db_user["email"], "role": db_user["role"]})
     
     return {
@@ -170,7 +174,7 @@ def login_user(user: UserLogin):
         }
     }
 
-    # 1. إضافة وظيفة جديدة
+    
 @app.post("/jobs", status_code=status.HTTP_201_CREATED)
 def create_job(job: JobCreate):
     conn = get_db_connection()
@@ -184,14 +188,15 @@ def create_job(job: JobCreate):
     conn.close()
     return {"message": "Job added successfully", "job_id": job_id}
 
-# 2. عرض كل الوظائف (مع خاصية البحث)
+
+
 @app.get("/jobs")
 def get_jobs(search: Optional[str] = None):
     conn = get_db_connection()
     cursor = conn.cursor()
     
     if search:
-        # لو المستخدم بيبحث عن كلمة معينة في العنوان أو المهارات
+      
         search_query = f"%{search}%"
         cursor.execute("SELECT * FROM jobs WHERE title LIKE ? OR required_skills LIKE ?", (search_query, search_query))
     else:
@@ -201,7 +206,7 @@ def get_jobs(search: Optional[str] = None):
     conn.close()
     return [dict(job) for job in jobs]
 
-# 3. عرض وظيفة واحدة بالتفصيل
+
 @app.get("/jobs/{job_id}")
 def get_job(job_id: int):
     conn = get_db_connection()
@@ -214,13 +219,13 @@ def get_job(job_id: int):
         raise HTTPException(status_code=404, detail="Job not found")
     return dict(job)
 
-# 4. تعديل وظيفة
+
 @app.put("/jobs/{job_id}")
 def update_job(job_id: int, job_data: JobUpdate):
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # نجيب الوظيفة القديمة الأول
+
     cursor.execute("SELECT * FROM jobs WHERE id = ?", (job_id,))
     existing_job = cursor.fetchone()
     
@@ -228,7 +233,7 @@ def update_job(job_id: int, job_data: JobUpdate):
         conn.close()
         raise HTTPException(status_code=404, detail="Job not found")
         
-    # تحديث الحقول اللي اتبعتت بس
+    
     new_title = job_data.title if job_data.title else existing_job["title"]
     new_desc = job_data.description if job_data.description else existing_job["description"]
     new_skills = job_data.required_skills if job_data.required_skills else existing_job["required_skills"]
@@ -245,10 +250,10 @@ def update_job(job_id: int, job_data: JobUpdate):
 
 @app.post("/upload-resume")
 async def upload_resume(user_id: int, file: UploadFile = File(...)):
-    # قراءة الملف كـ Bytes
+    
     file_bytes = await file.read()
     
-    # استخراج النص بناءً على نوع الملف
+  
     extracted_text = ""
     if file.filename.endswith('.pdf'):
         extracted_text = extract_text_from_pdf(file_bytes)
@@ -257,7 +262,7 @@ async def upload_resume(user_id: int, file: UploadFile = File(...)):
     else:
         raise HTTPException(status_code=400, detail="Only PDF and DOCX files are supported")
     
-    # حفظ النص الخام في قاعدة البيانات
+    
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute(
@@ -271,7 +276,7 @@ async def upload_resume(user_id: int, file: UploadFile = File(...)):
     return {
         "message": "Resume uploaded and text extracted successfully",
         "resume_id": resume_id,
-        "extracted_text_preview": extracted_text[:200] + "..." # عرض أول 200 حرف للتأكيد
+        "extracted_text_preview": extracted_text[:200] + "..." 
     }
 
 @app.post("/analyze-resume/{resume_id}")
@@ -279,7 +284,7 @@ def analyze_resume(resume_id: int):
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # 1. جلب النص الخام للسيرة الذاتية من قاعدة البيانات
+
     cursor.execute("SELECT extracted_text FROM resumes WHERE id = ?", (resume_id,))
     resume = cursor.fetchone()
     
@@ -289,14 +294,14 @@ def analyze_resume(resume_id: int):
     
     text = resume["extracted_text"]
     
-    # 2. تشغيل الـ AI Agent لتحليل النص
+  
     try:
         analysis_result = analyze_resume_with_llama(text)
     except Exception as e:
         conn.close()
         raise HTTPException(status_code=500, detail=f"AI Analysis failed: {str(e)}")
         
-    # 3. تحديث السيرة الذاتية في قاعدة البيانات بالنتائج
+  
     cursor.execute("""
         UPDATE resumes 
         SET ai_summary = ?, technical_skills = ?, soft_skills = ?, education_details = ?, experience_details = ?
@@ -317,7 +322,7 @@ def analyze_resume(resume_id: int):
         "message": "Resume analyzed successfully",
         "analysis_results": analysis_result
     }
-# 5. حذف وظيفة
+
 @app.delete("/jobs/{job_id}")
 def delete_job(job_id: int):
     conn = get_db_connection()
@@ -332,17 +337,17 @@ def match_jobs_with_rag(resume_id: int):
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # 1. جلب بيانات السيرة الذاتية اللي تم تحليلها
+   
     cursor.execute("SELECT ai_summary, technical_skills, soft_skills FROM resumes WHERE id = ?", (resume_id,))
     resume = cursor.fetchone()
     if not resume or not resume["ai_summary"]:
         conn.close()
         raise HTTPException(status_code=404, detail="Resume not found or not analyzed yet")
         
-    # تجميع النص الخاص بالمرشح
+    
     candidate_profile = f"Summary: {resume['ai_summary']} | Tech Skills: {resume['technical_skills']} | Soft Skills: {resume['soft_skills']}"
     
-    # 2. جلب كل الوظائف المتاحة من قاعدة البيانات
+    
     cursor.execute("SELECT * FROM jobs")
     jobs = cursor.fetchall()
     conn.close()
@@ -350,8 +355,6 @@ def match_jobs_with_rag(resume_id: int):
     if not jobs:
         return {"message": "No jobs available in the system yet."}
         
-    # 3. بناء الـ FAISS Index (Knowledge Base)
-    # تجميع نصوص الوظائف لعمل الـ Embeddings
     job_texts = [f"Title: {job['title']} | Desc: {job['description']} | Skills: {job['required_skills']}" for job in jobs]
     
     job_embeddings = embedding_model.encode(job_texts)
@@ -360,16 +363,15 @@ def match_jobs_with_rag(resume_id: int):
     index = faiss.IndexFlatL2(dimension)
     index.add(job_embeddings)
     
-    # 4. البحث باستخدام السيرة الذاتية (Retrieval)
+   
     candidate_embedding = embedding_model.encode([candidate_profile])
-    k = min(3, len(jobs)) # هنجيب أفضل 3 وظائف فقط
+    k = min(3, len(jobs))
     distances, indices = index.search(candidate_embedding, k)
-    
-    # استخراج الوظائف المطابقة
+   
     top_jobs = [dict(jobs[i]) for i in indices[0]]
     jobs_context = json.dumps(top_jobs, ensure_ascii=False)
     
-    # 5. تشغيل الـ AI Agent لإعطاء نسبة التطابق والنصائح (Generation)
+    
     prompt = f"""
     You are an expert Career Advisor Agent. Compare the candidate's profile with the retrieved jobs.
     For each job, calculate a matching score (0-100%) and explain in one sentence WHY it's a good fit.
@@ -403,7 +405,7 @@ def get_career_advice(resume_id: int):
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # جلب بيانات السيرة الذاتية
+   
     cursor.execute("SELECT ai_summary, technical_skills, soft_skills FROM resumes WHERE id = ?", (resume_id,))
     resume = cursor.fetchone()
     conn.close()
@@ -413,7 +415,7 @@ def get_career_advice(resume_id: int):
         
     candidate_profile = f"Summary: {resume['ai_summary']} | Tech Skills: {resume['technical_skills']} | Soft Skills: {resume['soft_skills']}"
     
-    # بناء الـ Prompt الخاص بالمستشار المهني
+    
     prompt = f"""
     You are an expert Career Advisor Agent. Review this candidate's profile and provide professional advice to improve their career prospects.
     Candidate Profile: {candidate_profile}
